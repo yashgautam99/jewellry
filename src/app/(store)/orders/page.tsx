@@ -1,19 +1,37 @@
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { PackageOpen } from "lucide-react";
+
 export default function OrdersPage() {
   return (
-    <section className="py-16 px-6">
+    <section className="py-24 px-6 bg-background transition-colors duration-300 min-h-[80vh]">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl md:text-4xl font-serif font-bold text-white mb-8">
-          Your Orders
-        </h1>
-
-        {/* Empty State */}
-        <div className="rounded-2xl bg-gradient-to-br from-[#141414] to-[#1A1A1A] border border-white/5 p-16 text-center">
-          <span className="text-6xl block mb-6">📦</span>
-          <h2 className="text-xl font-serif text-white mb-3">No orders yet</h2>
-          <p className="text-sm text-[#6B6B6B]">
-            Once you place an order, it will appear here.
+        <div className="mb-12">
+          <h1 className="text-4xl md:text-5xl font-serif font-bold text-foreground mb-2">
+            Your Orders
+          </h1>
+          <p className="text-muted-foreground">
+            Track and manage your Lumière purchases.
           </p>
         </div>
+
+        {/* Empty State */}
+        <Card className="border-border bg-card shadow-sm">
+          <CardContent className="flex flex-col items-center justify-center py-24 text-center">
+            <PackageOpen className="w-16 h-16 text-muted-foreground/30 mb-6" />
+            <h2 className="text-2xl font-serif font-semibold text-foreground mb-3">
+              No orders yet
+            </h2>
+            <p className="text-muted-foreground mb-8 max-w-sm">
+              When you place an order for our handcrafted jewellery, it will
+              appear here.
+            </p>
+            <Button asChild size="lg">
+              <Link href="/products">Discover Collections</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </section>
   );

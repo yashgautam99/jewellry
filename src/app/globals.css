@@ -1,62 +1,266 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --gold-primary: #d4a843;
-  --gold-dark: #8c6d1f;
-  --gold-light: #fff0bf;
-  --bg-dark: #0a0a0a;
-  --bg-card: #141414;
-  --bg-elevated: #1a1a1a;
-  --text-primary: #fafafa;
-  --text-secondary: #a3a3a3;
-  --text-muted: #6b6b6b;
+/* ===== SMOOTH SCROLL ===== */
+/* Handled by Lenis now */
+
+/* ===== HIDE DEFAULT CURSOR (custom cursor replaces it) ===== */
+@media (pointer: fine) {
+  * {
+    cursor: none !important;
+  }
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* ===== SKELETON SHIMMER ===== */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--border)) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.5s infinite ease-in-out;
 }
 
-body {
-  font-family: "Inter", system-ui, sans-serif;
-  background-color: var(--bg-dark);
-  color: var(--text-primary);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  :root {
+    /* Zara/Miso Editorial Monochrome — Light Mode */
+    --background: 0 0% 100%; /* #FFFFFF pure white */
+    --foreground: 0 0% 4%; /* #0A0A0A near-black */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 4%;
+    --primary: 0 0% 4%; /* #0A0A0A — black buttons */
+    --primary-foreground: 0 0% 100%; /* white text on black */
+    --secondary: 0 0% 96%; /* #F5F5F5 light grey sections */
+    --secondary-foreground: 0 0% 4%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%; /* #737373 subtle grey text */
+    --accent: 0 0% 4%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 91%; /* #E8E8E8 very subtle border */
+    --input: 0 0% 91%;
+    --ring: 0 0% 4%;
+    --radius: 0rem; /* Zara-style: zero border-radius = sharp corners */
+    --chart-1: 0 0% 20%;
+    --chart-2: 0 0% 40%;
+    --chart-3: 0 0% 60%;
+    --chart-4: 0 0% 80%;
+    --chart-5: 0 0% 10%;
+    /* Nav pill (Miso-style) */
+    --nav-pill: 0 0% 24%; /* #3D3D3D dark gray pill */
+    --nav-pill-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    /* Zara/Miso Editorial Monochrome — Dark Mode */
+    --background: 0 0% 4%; /* #0A0A0A near-black */
+    --foreground: 0 0% 96%; /* #F5F5F5 off-white */
+    --card: 0 0% 7%; /* #111111 slightly lighter */
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 0 0% 96%; /* white buttons in dark mode */
+    --primary-foreground: 0 0% 4%; /* black text on white */
+    --secondary: 0 0% 9%; /* #171717 */
+    --secondary-foreground: 0 0% 96%;
+    --muted: 0 0% 9%;
+    --muted-foreground: 0 0% 55%; /* #8C8C8C readable mid-grey */
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 4%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15%; /* #252525 subtle dark border */
+    --input: 0 0% 15%;
+    --ring: 0 0% 96%;
+    /* Nav pill stays dark in dark mode */
+    --nav-pill: 0 0% 16%;
+    --nav-pill-foreground: 0 0% 96%;
+  }
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-family: "Playfair Display", Georgia, serif;
+@layer base {
+  * {
+    @apply border-border box-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "Inter", system-ui, sans-serif;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    @apply tracking-tight;
+  }
+  a,
+  button {
+    @apply transition-all duration-200 ease-in-out;
+  }
 }
 
-::selection {
-  background-color: var(--gold-primary);
-  color: var(--bg-dark);
-}
-
+/* ===== CUSTOM SCROLLBAR ===== */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
-
 ::-webkit-scrollbar-track {
-  background: var(--bg-dark);
+  background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: var(--gold-dark);
-  border-radius: 3px;
+  background: hsl(var(--border));
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--gold-primary);
+/* ===== MARQUEE ===== */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+  will-change: transform;
+}
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* ===== FADE UP ===== */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.page-enter {
+  animation: fadeUp 0.6s ease forwards;
+}
+
+/* ===== SMOOTH THEME SWITCH ===== */
+*,
+*::before,
+*::after {
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.15s ease;
+}
+
+/* ===== EDITORIAL UNDERLINE HOVER ===== */
+.editorial-link {
+  position: relative;
+  display: inline-block;
+}
+.editorial-link::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: currentColor;
+  transition: width 0.3s ease;
+}
+.editorial-link:hover::after {
+  width: 100%;
+}
+
+/* ===== WINDOW-PANE GRID (Miso product grid) ===== */
+.window-pane-grid {
+  display: grid;
+  border-top: 1px solid hsl(var(--border));
+  border-left: 1px solid hsl(var(--border));
+}
+.window-pane-grid > * {
+  border-right: 1px solid hsl(var(--border));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+/* ===== PRODUCT CARD HOVER ===== */
+.product-card-img {
+  overflow: hidden;
+}
+.product-card-img img {
+  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.product-card-img:hover img {
+  transform: scale(1.04);
+}
+
+/* ===== ADD TO CART SLIDE UP ===== */
+.cart-slide {
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+}
+.group:hover .cart-slide {
+  transform: translateY(0);
+}
+
+/* ===== FULL-BLEED HERO TEXT ===== */
+.hero-wordmark {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 300;
+  letter-spacing: 0.25em;
+  font-style: italic;
+}
+
+/* ===== ZARA-STYLE BUTTON ===== */
+.btn-editorial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 2rem;
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  font-family: "Inter", sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    border-color 0.2s;
+}
+.btn-editorial:hover {
+  background: transparent;
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--foreground));
+}
+.btn-editorial-outline {
+  background: transparent;
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--foreground));
+}
+.btn-editorial-outline:hover {
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
 }

@@ -2,11 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ThemeSwitcher } from "@/components/common/ThemeSwitcher";
+import {
+  LayoutDashboard,
+  Package,
+  Boxes,
+  ShoppingBag,
+  ArrowLeft,
+} from "lucide-react";
 
 const navItems = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: "📊" },
-  { href: "/admin/products", label: "Products", icon: "💎" },
-  { href: "/admin/orders", label: "Orders", icon: "📦" },
+  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/products", label: "Products", icon: Package },
+  { href: "/admin/inventory", label: "Inventory", icon: Boxes },
+  { href: "/admin/orders", label: "Orders", icon: ShoppingBag },
 ];
 
 export default function AdminLayout({
@@ -15,47 +24,81 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const isLoginPage = pathname === "/admin/login";
+
+  if (isLoginPage) {
+    return <div className="min-h-screen bg-background">{children}</div>;
+  }
 
   return (
-    <div className="flex min-h-screen bg-[#0A0A0A]">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-white/5 bg-[#0A0A0A] p-6 hidden lg:block">
-        <Link href="/admin/dashboard" className="block mb-10">
-          <span className="text-xl font-serif font-bold bg-gradient-to-r from-[#D4A843] to-[#FFE699] bg-clip-text text-transparent">
-            Lumière
+    <div className="flex min-h-screen bg-background">
+      {/* Monochrome sidebar */}
+      <aside className="w-56 bg-foreground hidden lg:flex flex-col">
+        {/* Logo */}
+        <Link
+          href="/admin/dashboard"
+          className="block px-6 pt-8 pb-6 border-b border-background/10"
+        >
+          <span className="font-serif text-lg font-light italic tracking-[0.25em] text-background">
+            LUMIÈRE
           </span>
-          <span className="block text-[10px] uppercase tracking-[0.3em] text-[#6B6B6B] mt-1">
-            Admin Panel
-          </span>
+          <p className="text-[8px] tracking-[0.3em] uppercase text-background/30 mt-1">
+            Admin
+          </p>
         </Link>
-        <nav className="space-y-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-200 ${
-                pathname === item.href
-                  ? "bg-[#D4A843]/10 text-[#D4A843]"
-                  : "text-[#A3A3A3] hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
-          ))}
+
+        {/* Nav Items */}
+        <nav className="flex-1 px-4 py-6 space-y-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname.startsWith(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-3 py-2.5 text-[11px] tracking-[0.1em] uppercase transition-colors ${
+                  isActive
+                    ? "bg-background/10 text-background"
+                    : "text-background/50 hover:text-background hover:bg-background/5"
+                }`}
+              >
+                <Icon
+                  className={`w-4 h-4 ${isActive ? "text-background" : "text-background/40"}`}
+                  strokeWidth={1.5}
+                />
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
-        <div className="mt-auto pt-8">
+
+        {/* Back to store */}
+        <div className="px-4 pb-6 border-t border-background/10 pt-4">
           <Link
             href="/"
-            className="flex items-center gap-2 px-4 py-3 text-sm text-[#6B6B6B] hover:text-[#D4A843] transition-colors rounded-xl hover:bg-white/5"
+            className="flex items-center gap-2 px-3 py-2 text-[10px] tracking-[0.1em] uppercase text-background/40 hover:text-background transition-colors"
           >
-            ← Back to Store
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Back to Store
           </Link>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-8">{children}</main>
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top bar */}
+        <header className="h-12 border-b border-border px-6 flex items-center justify-between bg-background sticky top-0 z-10">
+          {/* Mobile hamburger */}
+          <div className="lg:hidden font-serif text-sm italic tracking-[0.2em] text-foreground">
+            LUMIÈRE Admin
+          </div>
+          <div className="hidden lg:block" />
+          <ThemeSwitcher />
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 p-6 overflow-auto">{children}</main>
+      </div>
     </div>
   );
 }
