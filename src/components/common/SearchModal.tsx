@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ArrowRight } from "lucide-react";
+import { X, ArrowRight, Search as SearchIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import Image from "next/image";
@@ -31,6 +31,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
@@ -38,6 +39,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
     if (open) {
       setQuery("");
       setResults([]);
+      setSearched(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [open]);
@@ -45,7 +47,6 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
-      // CMD+K / CTRL+K to open
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
@@ -55,19 +56,38 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
     async (q: string) => {
       if (!q.trim()) {
         setResults([]);
+        setSearched(false);
         return;
       }
       setLoading(true);
-      const safeQ = q.replace(/,/g, " "); // Supabase .or breaks with commas
-      const { data } = await supabase
+      setSearched(true);
+
+      // Search name with ilike — most reliable across Supabase versions
+      const { data: nameMatches } = await supabase
         .from("products")
         .select("id, name, base_price, category, product_images(url)")
-        .or(
-          `name.ilike.%${safeQ}%,category.ilike.%${safeQ}%,description.ilike.%${safeQ}%`,
-        )
+        .ilike("name", `%${q.trim()}%`)
         .eq("is_active", true)
         .limit(8);
-      setResults((data as Product[]) ?? []);
+
+      // Also search category
+      const { data: catMatches } = await supabase
+        .from("products")
+        .select("id, name, base_price, category, product_images(url)")
+        .ilike("category", `%${q.trim()}%`)
+        .eq("is_active", true)
+        .limit(8);
+
+      // Merge and deduplicate
+      const combined = [...(nameMatches ?? []), ...(catMatches ?? [])];
+      const seen = new Set<string>();
+      const unique = combined.filter((p) => {
+        if (seen.has(p.id)) return false;
+        seen.add(p.id);
+        return true;
+      });
+
+      setResults(unique as Product[]);
       setLoading(false);
     },
     [supabase],
@@ -96,7 +116,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
             transition={{ duration: 0.25, delay: 0.05 }}
             className="max-w-2xl mx-auto pt-24 px-6"
           >
-            {/* Search input — Zara style */}
+            {/* Search input */}
             <div className="border-b-2 border-foreground flex items-center gap-4 pb-3">
               <span className="text-[10px] tracking-[0.3em] uppercase text-muted-foreground shrink-0">
                 SEARCH
@@ -122,10 +142,19 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
 
             {/* Results or trending */}
             <div className="mt-8">
-              {query && results.length === 0 && !loading && (
-                <p className="text-[13px] text-muted-foreground text-center py-8">
-                  No results for &ldquo;{query}&rdquo;
-                </p>
+              {searched && results.length === 0 && !loading && (
+                <div className="text-center py-8">
+                  <p className="text-[13px] text-muted-foreground mb-4">
+                    No results for &ldquo;{query}&rdquo;
+                  </p>
+                  <Link
+                    href={`/products?search=${encodeURIComponent(query)}`}
+                    onClick={onClose}
+                    className="text-[11px] tracking-[0.15em] uppercase text-foreground border border-foreground px-4 py-2 hover:bg-foreground hover:text-background transition-colors"
+                  >
+                    Browse all products
+                  </Link>
+                </div>
               )}
 
               {!query && (

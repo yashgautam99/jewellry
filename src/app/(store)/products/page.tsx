@@ -3,21 +3,30 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { ChevronDown, LayoutGrid, Grid3X3, List, Search } from "lucide-react";
-import { motion } from "framer-motion";
+import {
+  ChevronDown,
+  LayoutGrid,
+  Grid3X3,
+  List,
+  Search,
+  X,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { ProductSkeleton } from "@/components/common/Loaders";
-import { useSearchParams } from "next/navigation";
 
 type Product = {
   id: string;
   name: string;
   base_price: number;
   category: string;
+  gender: string;
   product_images: Array<{ url: string }>;
 };
 
 const CATEGORIES = ["All", "Rings", "Pendants", "Bracelets"];
+const GENDERS = ["All", "Women", "Men", "Unisex"];
 const SORT_OPTIONS = [
   { label: "Featured", value: "featured" },
   { label: "Price: Low to High", value: "price_asc" },
@@ -28,69 +37,104 @@ const SORT_OPTIONS = [
 type GridView = 2 | 3 | 4;
 
 export default function ProductsPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const urlCategory = searchParams.get("category");
-  const urlSearch = searchParams.get("search");
+
+  // Read all filters from URL on every render — this is the single source of truth
+  const urlCategory = searchParams.get("category") ?? "";
+  const urlGender = searchParams.get("gender") ?? "";
+  const urlSearch = searchParams.get("search") ?? "";
+  const urlSort = searchParams.get("sort") ?? "featured";
+  const urlMinPrice = Number(searchParams.get("minPrice") ?? "0");
+  const urlMaxPrice = Number(searchParams.get("maxPrice") ?? "200000");
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState(
-    urlCategory
-      ? urlCategory.charAt(0).toUpperCase() + urlCategory.slice(1)
-      : "All",
-  );
   const [gridView, setGridView] = useState<GridView>(3);
-  const [sortBy, setSortBy] = useState("featured");
   const [showSort, setShowSort] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(urlSearch ?? "");
-  const [priceMax, setPriceMax] = useState(200000);
-  const [showPriceFilter, setShowPriceFilter] = useState(false);
-
+  const [localSearch, setLocalSearch] = useState(urlSearch);
+  const [priceMax, setPriceMax] = useState(urlMaxPrice);
   const supabase = createClient();
 
+  // Helper: update a single URL param
+  const setParam = useCallback(
+    (key: string, value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value && value !== "all" && value !== "") {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+      router.push(`/products?${params.toString()}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
+
+  // Fetch products from Supabase based on URL params
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     let q = supabase
       .from("products")
-      .select("id, name, base_price, category, product_images(url)")
+      .select("id, name, base_price, category, gender, product_images(url)")
       .eq("is_active", true);
 
-    if (activeCategory !== "All") {
-      q = q.ilike("category", activeCategory);
+    // Category filter
+    if (urlCategory) {
+      q = q.eq("category", urlCategory.toLowerCase());
     }
-    if (searchQuery.trim()) {
-      q = q.or(
-        `name.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`,
-      );
+
+    // Gender filter
+    if (urlGender && urlGender !== "all") {
+      q = q.eq("gender", urlGender.toLowerCase());
     }
-    if (sortBy === "price_asc") q = q.order("base_price", { ascending: true });
-    else if (sortBy === "price_desc")
+
+    // Search filter — use ilike on name, fallback to category
+    if (urlSearch.trim()) {
+      q = q.ilike("name", `%${urlSearch.trim()}%`);
+    }
+
+    // Price filter
+    if (urlMaxPrice < 200000) {
+      q = q.lte("base_price", urlMaxPrice);
+    }
+
+    // Sort
+    if (urlSort === "price_asc") q = q.order("base_price", { ascending: true });
+    else if (urlSort === "price_desc")
       q = q.order("base_price", { ascending: false });
+    else if (urlSort === "newest")
+      q = q.order("created_at", { ascending: false });
     else q = q.order("is_featured", { ascending: false });
 
     const { data, error } = await q;
     if (!error) setProducts((data as Product[]) ?? []);
     setLoading(false);
-  }, [activeCategory, sortBy, searchQuery, supabase]);
+  }, [urlCategory, urlGender, urlSearch, urlSort, urlMaxPrice, supabase]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Update category from URL param when it changes
+  // Debounce local search input before pushing to URL
   useEffect(() => {
-    if (urlCategory) {
-      setActiveCategory(
-        urlCategory.charAt(0).toUpperCase() + urlCategory.slice(1),
-      );
-    }
-  }, [urlCategory]);
+    const t = setTimeout(() => {
+      setParam("search", localSearch);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [localSearch, setParam]);
 
-  useEffect(() => {
-    if (urlSearch) setSearchQuery(urlSearch);
-  }, [urlSearch]);
+  const hasFilters =
+    urlCategory ||
+    urlGender ||
+    urlSearch ||
+    urlSort !== "featured" ||
+    urlMaxPrice < 200000;
 
-  const filtered = products.filter((p) => p.base_price <= priceMax);
+  const clearFilters = () => {
+    router.push("/products", { scroll: false });
+    setLocalSearch("");
+    setPriceMax(200000);
+  };
 
   const gridCols =
     gridView === 4
@@ -98,6 +142,13 @@ export default function ProductsPage() {
       : gridView === 3
         ? "grid-cols-2 md:grid-cols-3"
         : "grid-cols-1 md:grid-cols-2";
+
+  // Active category label for heading
+  const headingLabel = urlSearch
+    ? `"${urlSearch}"`
+    : urlCategory
+      ? urlCategory.charAt(0).toUpperCase() + urlCategory.slice(1)
+      : "Collections";
 
   return (
     <div className="min-h-screen bg-background">
@@ -109,15 +160,21 @@ export default function ProductsPage() {
           transition={{ duration: 0.6 }}
           className="font-serif text-4xl md:text-5xl font-light text-foreground italic"
         >
-          {searchQuery
-            ? `Search: "${searchQuery}"`
-            : activeCategory === "All"
-              ? "Collections"
-              : activeCategory}
+          {headingLabel}
         </motion.h1>
-        <p className="text-[11px] tracking-[0.2em] uppercase text-muted-foreground mt-2">
-          {filtered.length} Products
-        </p>
+        <div className="flex items-center gap-4 mt-2">
+          <p className="text-[11px] tracking-[0.2em] uppercase text-muted-foreground">
+            {products.length} Products
+          </p>
+          {hasFilters && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1 text-[10px] tracking-[0.1em] uppercase text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="w-3 h-3" /> Clear Filters
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex">
@@ -132,88 +189,102 @@ export default function ProductsPage() {
               <Search className="w-3 h-3 text-muted-foreground shrink-0" />
               <input
                 type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={localSearch}
+                onChange={(e) => setLocalSearch(e.target.value)}
                 placeholder="Search products…"
                 className="w-full bg-transparent text-[12px] text-foreground outline-none placeholder:text-muted-foreground/40"
               />
+              {localSearch && (
+                <button onClick={() => setLocalSearch("")}>
+                  <X className="w-3 h-3 text-muted-foreground" />
+                </button>
+              )}
             </div>
           </div>
 
           {/* CATEGORY */}
           <div className="border-b border-border">
-            <button className="w-full flex items-center justify-between px-5 py-3 text-[10px] tracking-[0.2em] uppercase font-medium text-foreground">
+            <p className="flex items-center justify-between px-5 py-3 text-[10px] tracking-[0.2em] uppercase font-medium text-foreground">
               Category
-              <ChevronDown className="w-3.5 h-3.5" />
-            </button>
+            </p>
             <div className="px-5 pb-4 space-y-2">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`block w-full text-left text-[12px] transition-colors py-0.5 ${
-                    activeCategory === cat
-                      ? "text-foreground font-medium"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+              {CATEGORIES.map((cat) => {
+                const val = cat === "All" ? "" : cat.toLowerCase();
+                const active = urlCategory === val;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setParam("category", val)}
+                    className={`block w-full text-left text-[12px] transition-colors py-0.5 ${
+                      active
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* GENDER */}
+          <div className="border-b border-border">
+            <p className="flex items-center justify-between px-5 py-3 text-[10px] tracking-[0.2em] uppercase font-medium text-foreground">
+              Gender
+            </p>
+            <div className="px-5 pb-4 space-y-2">
+              {GENDERS.map((g) => {
+                const val = g === "All" ? "" : g.toLowerCase();
+                const active = urlGender === val;
+                return (
+                  <button
+                    key={g}
+                    onClick={() => setParam("gender", val)}
+                    className={`block w-full text-left text-[12px] transition-colors py-0.5 ${
+                      active
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {g}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* PRICE */}
           <div className="border-b border-border">
-            <button
-              className="w-full flex items-center justify-between px-5 py-3 text-[10px] tracking-[0.2em] uppercase font-medium text-foreground"
-              onClick={() => setShowPriceFilter(!showPriceFilter)}
-            >
+            <p className="flex items-center justify-between px-5 py-3 text-[10px] tracking-[0.2em] uppercase font-medium text-foreground">
               Price
-              <ChevronDown
-                className={`w-3.5 h-3.5 transition-transform ${showPriceFilter ? "rotate-180" : ""}`}
+            </p>
+            <div className="px-5 pb-4 space-y-3">
+              <input
+                type="range"
+                min="0"
+                max="200000"
+                step="5000"
+                value={priceMax}
+                onChange={(e) => setPriceMax(Number(e.target.value))}
+                onMouseUp={() =>
+                  setParam(
+                    "maxPrice",
+                    priceMax < 200000 ? String(priceMax) : "",
+                  )
+                }
+                onTouchEnd={() =>
+                  setParam(
+                    "maxPrice",
+                    priceMax < 200000 ? String(priceMax) : "",
+                  )
+                }
+                className="w-full accent-foreground"
               />
-            </button>
-            {showPriceFilter && (
-              <div className="px-5 pb-4 space-y-3">
-                <input
-                  type="range"
-                  min="0"
-                  max="200000"
-                  step="5000"
-                  value={priceMax}
-                  onChange={(e) => setPriceMax(Number(e.target.value))}
-                  className="w-full accent-foreground"
-                />
-                <div className="flex justify-between text-[11px] text-muted-foreground">
-                  <span>₹0</span>
-                  <span>₹{priceMax.toLocaleString("en-IN")}</span>
-                </div>
+              <div className="flex justify-between text-[11px] text-muted-foreground">
+                <span>₹0</span>
+                <span>₹{priceMax.toLocaleString("en-IN")}</span>
               </div>
-            )}
-          </div>
-
-          {/* AVAILABILITY */}
-          <div className="border-b border-border">
-            <button className="w-full flex items-center justify-between px-5 py-3 text-[10px] tracking-[0.2em] uppercase font-medium text-foreground">
-              Availability
-              <ChevronDown className="w-3.5 h-3.5" />
-            </button>
-            <div className="px-5 pb-4 space-y-2">
-              {["In Stock", "Made to Order"].map((opt) => (
-                <label
-                  key={opt}
-                  className="flex items-center gap-2.5 cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    className="w-3 h-3 accent-foreground"
-                  />
-                  <span className="text-[12px] text-muted-foreground">
-                    {opt}
-                  </span>
-                </label>
-              ))}
             </div>
           </div>
         </aside>
@@ -239,9 +310,10 @@ export default function ProductsPage() {
             </div>
 
             <span className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground hidden md:block">
-              {filtered.length} Products
+              {products.length} Products
             </span>
 
+            {/* Sort */}
             <div className="relative">
               <button
                 onClick={() => setShowSort(!showSort)}
@@ -252,77 +324,83 @@ export default function ProductsPage() {
                   className={`w-3 h-3 transition-transform ${showSort ? "rotate-180" : ""}`}
                 />
               </button>
-              {showSort && (
-                <div className="absolute right-0 top-full z-20 bg-background border border-border w-48 shadow-lg">
-                  {SORT_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => {
-                        setSortBy(opt.value);
-                        setShowSort(false);
-                      }}
-                      className={`block w-full text-left px-4 py-2.5 text-[12px] transition-colors ${
-                        sortBy === opt.value
-                          ? "bg-foreground text-background"
-                          : "text-foreground hover:bg-secondary"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <AnimatePresence>
+                {showSort && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    className="absolute right-0 top-full z-20 bg-background border border-border w-48 shadow-lg"
+                  >
+                    {SORT_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => {
+                          setParam(
+                            "sort",
+                            opt.value === "featured" ? "" : opt.value,
+                          );
+                          setShowSort(false);
+                        }}
+                        className={`block w-full text-left px-4 py-2.5 text-[12px] transition-colors ${
+                          urlSort === opt.value
+                            ? "bg-foreground text-background"
+                            : "text-foreground hover:bg-secondary"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
           {/* Mobile category tabs */}
           <div className="md:hidden flex overflow-x-auto border-b border-border">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`flex-none px-5 py-3 text-[10px] tracking-[0.15em] uppercase border-r border-border last:border-r-0 transition-colors whitespace-nowrap ${
-                  activeCategory === cat
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+            {CATEGORIES.map((cat) => {
+              const val = cat === "All" ? "" : cat.toLowerCase();
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setParam("category", val)}
+                  className={`flex-none px-5 py-3 text-[10px] tracking-[0.15em] uppercase border-r border-border last:border-r-0 transition-colors whitespace-nowrap ${
+                    urlCategory === val
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {cat}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Products */}
+          {/* Products Grid */}
           {loading ? (
             <ProductSkeleton count={9} />
-          ) : filtered.length === 0 ? (
+          ) : products.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-32 text-center border-t border-border">
               <p className="font-serif text-2xl font-light italic text-foreground mb-2">
                 No products found
               </p>
-              <p className="text-[12px] text-muted-foreground mb-4">
+              <p className="text-[12px] text-muted-foreground mb-6">
                 Try adjusting your search or filters
               </p>
-              <button
-                onClick={() => {
-                  setSearchQuery("");
-                  setActiveCategory("All");
-                  setPriceMax(200000);
-                }}
-                className="text-[10px] tracking-[0.15em] uppercase text-foreground editorial-link"
-              >
+              <button onClick={clearFilters} className="btn-editorial">
                 Clear Filters
               </button>
             </div>
           ) : (
             <motion.div
-              key={`${activeCategory}-${gridView}-${sortBy}`}
+              key={`${urlCategory}-${urlGender}-${urlSearch}-${urlSort}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.35 }}
               className={`grid ${gridCols} border-t border-l border-border`}
             >
-              {filtered.map((product) => (
+              {products.map((product) => (
                 <Link
                   key={product.id}
                   href={`/products/${product.id}`}
@@ -337,7 +415,7 @@ export default function ProductsPage() {
                         src={product.product_images[0].url}
                         alt={product.name}
                         fill
-                        className="object-cover"
+                        className="object-cover transition-transform duration-700 group-hover:scale-105"
                         sizes="(max-width: 768px) 50vw, 33vw"
                       />
                     ) : (
@@ -346,7 +424,7 @@ export default function ProductsPage() {
                       </div>
                     )}
                     <div className="cart-slide absolute bottom-0 left-0 right-0 bg-foreground text-background text-[10px] tracking-[0.2em] uppercase text-center py-3 font-medium">
-                      Add to Cart
+                      View Product
                     </div>
                   </div>
                   <div className="px-4 py-3">

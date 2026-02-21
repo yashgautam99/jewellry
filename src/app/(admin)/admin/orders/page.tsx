@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -96,7 +97,12 @@ export default async function AdminOrdersPage() {
               {orders.map((order) => (
                 <TableRow key={order.id} className="group hover:bg-muted/30">
                   <TableCell className="font-medium text-foreground text-xs uppercase">
-                    {order.id.split("-")[0]}
+                    <Link
+                      href={`/admin/orders/${order.id}`}
+                      className="hover:underline text-foreground"
+                    >
+                      {order.id.split("-")[0]}
+                    </Link>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">

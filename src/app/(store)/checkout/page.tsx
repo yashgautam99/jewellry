@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowRight, Check, ChevronDown, Truck, Shield } from "lucide-react";
 import { ButtonLoader } from "@/components/common/Loaders";
+import { placeOrder } from "./actions";
 
 const FORM_FIELDS = [
   {
@@ -43,6 +44,7 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "upi">("cod");
+  const [orderError, setOrderError] = useState<string | null>(null);
   const router = useRouter();
 
   const subtotal = getCartTotal();
@@ -53,10 +55,30 @@ export default function CheckoutPage() {
     e.preventDefault();
     if (items.length === 0) return;
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1800));
-    clearCart();
+    setOrderError(null);
+
+    const result = await placeOrder(
+      {
+        fullName: formData.fullName ?? "",
+        email: formData.email ?? "",
+        phone: formData.phone ?? "",
+        address: formData.address ?? "",
+        city: formData.city ?? "",
+        pincode: formData.pincode ?? "",
+        state: formData.state ?? "",
+        paymentMethod,
+      },
+      items,
+    );
+
     setIsSubmitting(false);
-    router.push("/orders/success");
+
+    if (result.success) {
+      clearCart();
+      router.push(`/orders/confirmation?id=${result.orderId}`);
+    } else {
+      setOrderError(result.error);
+    }
   };
 
   if (items.length === 0) {

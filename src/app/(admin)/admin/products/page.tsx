@@ -86,12 +86,14 @@ export default async function AdminProductsPage() {
               {products.map((product) => (
                 <TableRow key={product.id} className="group">
                   <TableCell className="font-medium text-foreground">
-                    <Link
-                      href={`/admin/products/${product.id}`}
-                      className="hover:text-primary transition-colors"
-                    >
-                      {product.name}
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <p>{product.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {product.slug}
+                        </p>
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell className="capitalize text-muted-foreground">
                     {product.category}
@@ -127,19 +129,53 @@ export default async function AdminProductsPage() {
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-[160px]">
+                      <DropdownMenuContent align="end" className="w-[180px]">
                         <DropdownMenuItem asChild>
                           <Link
-                            href={`/admin/products/${product.id}`}
+                            href={`/admin/products/${product.id}/edit`}
                             className="cursor-pointer flex items-center"
                           >
                             <Edit className="mr-2 h-4 w-4" />
                             Edit Product
                           </Link>
                         </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <form
+                            action={async () => {
+                              "use server";
+                              const { toggleProductActive } =
+                                await import("./actions");
+                              await toggleProductActive(
+                                product.id,
+                                product.is_active,
+                              );
+                            }}
+                          >
+                            <button
+                              type="submit"
+                              className="w-full text-left flex items-center text-sm px-2 py-1.5"
+                            >
+                              {product.is_active ? "Unpublish" : "Publish"}
+                            </button>
+                          </form>
+                        </DropdownMenuItem>
                         <DropdownMenuItem className="text-destructive focus:bg-destructive/10 cursor-pointer flex items-center">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
+                          <form
+                            action={async () => {
+                              "use server";
+                              const { deleteProduct } =
+                                await import("./actions");
+                              await deleteProduct(product.id);
+                            }}
+                          >
+                            <button
+                              type="submit"
+                              className="w-full text-left flex items-center gap-2 text-sm text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </button>
+                          </form>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
