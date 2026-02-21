@@ -1,6 +1,8 @@
 "use client";
 
-import { createProduct } from "../actions";
+import { useActionState, useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createProduct, type ActionResult } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,14 +17,35 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import Link from "next/link";
-import { ArrowLeft, Upload, Info } from "lucide-react";
-import { useState, useRef } from "react";
+import {
+  ArrowLeft,
+  Upload,
+  Info,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
+import { SubmitButton } from "@/components/admin/SubmitButton";
+import { toast } from "sonner";
+
+const initialState: ActionResult | null = null;
 
 export default function NewProductPage() {
+  const router = useRouter();
+  const [state, formAction] = useActionState(createProduct, initialState);
   const [preview, setPreview] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>("");
   const [useUrl, setUseUrl] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Handle action result
+  useEffect(() => {
+    if (!state) return;
+    if (state.success) {
+      toast.success("Product saved successfully!");
+      router.push("/admin/products");
+    }
+    // Errors are shown inline — no toast for errors (they need to read and fix)
+  }, [state, router]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -52,7 +75,23 @@ export default function NewProductPage() {
         </p>
       </div>
 
-      <form action={createProduct} encType="multipart/form-data">
+      {/* Error banner */}
+      {state?.error && !state.success && (
+        <div className="flex items-start gap-3 p-4 mb-6 bg-destructive/10 border border-destructive/30 text-destructive">
+          <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
+          <p className="text-sm font-medium">{state.error}</p>
+        </div>
+      )}
+
+      {/* Warning (success but with image warning) */}
+      {state?.success && state.error && (
+        <div className="flex items-start gap-3 p-4 mb-6 bg-yellow-500/10 border border-yellow-500/30 text-yellow-700 dark:text-yellow-400">
+          <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
+          <p className="text-sm">{state.error}</p>
+        </div>
+      )}
+
+      <form action={formAction} encType="multipart/form-data">
         <div className="grid gap-8">
           {/* General Info */}
           <Card className="border-border bg-card shadow-sm">
@@ -65,7 +104,7 @@ export default function NewProductPage() {
                   htmlFor="name"
                   className="text-xs uppercase tracking-widest text-muted-foreground"
                 >
-                  Product Name
+                  Product Name *
                 </Label>
                 <Input
                   id="name"
@@ -93,15 +132,12 @@ export default function NewProductPage() {
 
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label
-                    htmlFor="category"
-                    className="text-xs uppercase tracking-widest text-muted-foreground"
-                  >
-                    Category
+                  <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+                    Category *
                   </Label>
                   <Select name="category" defaultValue="rings" required>
                     <SelectTrigger className="h-12">
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="rings">Rings</SelectItem>
@@ -111,15 +147,12 @@ export default function NewProductPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label
-                    htmlFor="gender"
-                    className="text-xs uppercase tracking-widest text-muted-foreground"
-                  >
-                    Gender target
+                  <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+                    Gender *
                   </Label>
                   <Select name="gender" defaultValue="women" required>
                     <SelectTrigger className="h-12">
-                      <SelectValue placeholder="Select gender" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="women">Women</SelectItem>
@@ -135,13 +168,14 @@ export default function NewProductPage() {
                   htmlFor="base_price"
                   className="text-xs uppercase tracking-widest text-muted-foreground"
                 >
-                  Base Price (₹)
+                  Base Price (₹) *
                 </Label>
                 <Input
                   id="base_price"
                   name="base_price"
                   type="number"
                   step="0.01"
+                  min="1"
                   required
                   placeholder="45000"
                   className="h-12"
@@ -149,10 +183,12 @@ export default function NewProductPage() {
               </div>
 
               <div className="flex items-center justify-between p-4 border border-border">
-                <div className="space-y-0.5">
-                  <Label className="text-sm font-medium">Active Status</Label>
+                <div>
+                  <Label className="text-sm font-medium">
+                    Publish immediately
+                  </Label>
                   <p className="text-xs text-muted-foreground">
-                    Publish this product immediately.
+                    Make visible to customers right away
                   </p>
                 </div>
                 <Switch name="is_active" value="true" defaultChecked />
@@ -160,7 +196,7 @@ export default function NewProductPage() {
             </CardContent>
           </Card>
 
-          {/* Initial Variant */}
+          {/* Variant */}
           <Card className="border-border bg-card shadow-sm">
             <CardHeader>
               <CardTitle className="font-serif">
@@ -174,7 +210,7 @@ export default function NewProductPage() {
                     htmlFor="material"
                     className="text-xs uppercase tracking-widest text-muted-foreground"
                   >
-                    Material
+                    Material *
                   </Label>
                   <Input
                     id="material"
@@ -228,6 +264,7 @@ export default function NewProductPage() {
                     name="inventory_count"
                     type="number"
                     defaultValue="0"
+                    min="0"
                     className="h-12"
                   />
                 </div>
@@ -268,8 +305,7 @@ export default function NewProductPage() {
                       <Info className="w-3 h-3 text-muted-foreground" />
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Only shown to customers when inventory = 0 and not
-                      made-to-order
+                      Only shown when inventory = 0 and not made-to-order
                     </p>
                   </div>
                 </div>
@@ -277,35 +313,27 @@ export default function NewProductPage() {
             </CardContent>
           </Card>
 
-          {/* Product Image */}
+          {/* Image */}
           <Card className="border-border bg-card shadow-sm">
             <CardHeader>
               <CardTitle className="font-serif">Product Image</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-4 mb-2">
-                <button
-                  type="button"
-                  onClick={() => setUseUrl(false)}
-                  className={`text-xs uppercase tracking-widest pb-1 border-b-2 transition-colors ${
-                    !useUrl
-                      ? "border-foreground text-foreground"
-                      : "border-transparent text-muted-foreground"
-                  }`}
-                >
-                  Upload File
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUseUrl(true)}
-                  className={`text-xs uppercase tracking-widest pb-1 border-b-2 transition-colors ${
-                    useUrl
-                      ? "border-foreground text-foreground"
-                      : "border-transparent text-muted-foreground"
-                  }`}
-                >
-                  Paste URL
-                </button>
+                {["Upload File", "Paste URL"].map((label, i) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setUseUrl(i === 1)}
+                    className={`text-xs uppercase tracking-widest pb-1 border-b-2 transition-colors ${
+                      useUrl === (i === 1)
+                        ? "border-foreground text-foreground"
+                        : "border-transparent text-muted-foreground"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
 
               {!useUrl ? (
@@ -314,7 +342,7 @@ export default function NewProductPage() {
                     ref={fileRef}
                     type="file"
                     name="image_file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     onChange={handleFileChange}
                     className="hidden"
                   />
@@ -325,9 +353,9 @@ export default function NewProductPage() {
                   >
                     <Upload className="w-6 h-6" />
                     <span className="text-sm">
-                      {fileName ? fileName : "Click to upload or drag & drop"}
+                      {fileName || "Click to upload — PNG, JPG, WEBP"}
                     </span>
-                    <span className="text-xs">PNG, JPG, WEBP up to 10MB</span>
+                    <span className="text-xs opacity-60">Max 10MB</span>
                   </button>
                   {preview && (
                     <div className="relative w-32 h-32 overflow-hidden border border-border">
@@ -354,9 +382,6 @@ export default function NewProductPage() {
                     placeholder="https://..."
                     className="h-12"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Paste any publicly accessible image URL
-                  </p>
                 </div>
               )}
             </CardContent>
@@ -366,9 +391,13 @@ export default function NewProductPage() {
             <Button type="button" variant="outline" size="lg" asChild>
               <Link href="/admin/products">Cancel</Link>
             </Button>
-            <Button type="submit" size="lg" className="px-8">
+            <SubmitButton
+              size="lg"
+              className="px-8"
+              pendingText="Saving product..."
+            >
               Save Product
-            </Button>
+            </SubmitButton>
           </div>
         </div>
       </form>

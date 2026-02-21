@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeSwitcher } from "@/components/common/ThemeSwitcher";
+import { Toaster } from "sonner";
 import {
   LayoutDashboard,
   Package,
@@ -100,6 +101,19 @@ export default function AdminLayout({
 
         {/* Page content */}
         <main className="flex-1 p-6 overflow-auto">{children}</main>
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: "hsl(var(--foreground))",
+              color: "hsl(var(--background))",
+              border: "none",
+              borderRadius: "0",
+              fontSize: "12px",
+              letterSpacing: "0.05em",
+            },
+          }}
+        />
       </div>
     </div>
   );
