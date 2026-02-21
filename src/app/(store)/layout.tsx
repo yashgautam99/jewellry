@@ -11,6 +11,7 @@ import { CursorEffect } from "@/components/common/CursorEffect";
 import { SearchModal } from "@/components/common/SearchModal";
 import { Search, X, Instagram } from "lucide-react";
 import { ReactLenis } from "lenis/react";
+import { Toaster } from "sonner";
 
 const categories = [
   { label: "RINGS", href: "/products?category=rings" },
@@ -370,6 +371,20 @@ export default function StoreLayout({
       <TrustBadges />
       <Footer />
       <BackToTop />
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: "var(--foreground)",
+            color: "var(--background)",
+            border: "none",
+            borderRadius: "0",
+            fontFamily: "var(--font-inter)",
+            fontSize: "12px",
+            letterSpacing: "0.08em",
+          },
+        }}
+      />
     </ReactLenis>
   );
 }

@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 export function CartSheet() {
   const [mounted, setMounted] = useState(false);
@@ -152,13 +153,14 @@ export function CartSheet() {
                             </p>
                           </div>
                           <button
-                            onClick={() =>
+                            onClick={() => {
                               removeItem(
                                 item.id,
                                 item.selectedSize,
                                 item.selectedMaterial,
-                              )
-                            }
+                              );
+                              toast.success(`Removed from bag`);
+                            }}
                             className="text-muted-foreground/40 hover:text-foreground transition-colors ml-2 shrink-0 opacity-0 group-hover:opacity-100"
                             aria-label="Remove item"
                           >

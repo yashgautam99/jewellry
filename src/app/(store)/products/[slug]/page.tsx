@@ -12,10 +12,14 @@ import {
   Shield,
   RefreshCw,
   Truck,
+  ZoomIn,
+  X,
 } from "lucide-react";
+import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
+
 import { createClient } from "@/lib/supabase/client";
 import { useCartStore } from "@/store/cart.store";
-import { motion, AnimatePresence } from "framer-motion";
 
 type Variant = {
   id: string;
@@ -55,6 +59,7 @@ export default function ProductDetailPage({
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
+  const [zoomOpen, setZoomOpen] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
   const [addedToCart, setAddedToCart] = useState(false);
   const [activeTab, setActiveTab] = useState<
@@ -161,6 +166,11 @@ export default function ProductDetailPage({
       selectedMaterial: selectedVariant?.material ?? undefined,
     });
     setAddedToCart(true);
+    toast.success(`Added to bag — ${product.name}`, {
+      description: selectedVariant?.material
+        ? `${selectedVariant.material}${selectedVariant.size ? ` · ${selectedVariant.size}` : ""}`
+        : undefined,
+    });
     setTimeout(() => setAddedToCart(false), 2000);
   };
 
@@ -168,6 +178,42 @@ export default function ProductDetailPage({
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Image zoom modal */}
+      <AnimatePresence>
+        {zoomOpen && images[activeImage]?.url && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] bg-background/95 backdrop-blur-sm flex items-center justify-center p-4 md:p-10"
+            onClick={() => setZoomOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.92 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              transition={{ duration: 0.25 }}
+              className="relative w-full max-w-2xl aspect-square"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Image
+                src={images[activeImage].url}
+                alt={images[activeImage].alt_text ?? product.name}
+                fill
+                className="object-contain"
+                sizes="(max-width: 768px) 100vw, 672px"
+                priority
+              />
+              <button
+                onClick={() => setZoomOpen(false)}
+                className="absolute top-4 right-4 w-8 h-8 bg-foreground text-background flex items-center justify-center hover:opacity-80 transition-opacity"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Breadcrumb */}
       <div className="border-b border-border px-6 md:px-10 py-4">
         <Link
@@ -182,7 +228,10 @@ export default function ProductDetailPage({
         {/* ─── Left: Image Gallery ─── */}
         <div>
           {/* Main image */}
-          <div className="relative aspect-square bg-secondary overflow-hidden">
+          <div
+            className="relative aspect-square bg-secondary overflow-hidden cursor-zoom-in group/img"
+            onClick={() => images[activeImage]?.url && setZoomOpen(true)}
+          >
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeImage}
@@ -197,7 +246,7 @@ export default function ProductDetailPage({
                     src={images[activeImage].url}
                     alt={images[activeImage].alt_text ?? product.name}
                     fill
-                    className="object-cover"
+                    className="object-cover transition-transform duration-700 group-hover/img:scale-105"
                     sizes="(max-width: 1024px) 100vw, 50vw"
                     priority
                   />
@@ -208,6 +257,13 @@ export default function ProductDetailPage({
                 )}
               </motion.div>
             </AnimatePresence>
+
+            {/* Zoom hint */}
+            {images[activeImage]?.url && (
+              <div className="absolute top-3 right-3 w-8 h-8 bg-background/70 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity">
+                <ZoomIn className="w-4 h-4 text-foreground" />
+              </div>
+            )}
 
             {/* Prev/Next arrows */}
             {images.length > 1 && (
