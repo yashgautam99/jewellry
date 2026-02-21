@@ -362,7 +362,7 @@ export default function StoreLayout({
   }, []);
 
   return (
-    <ReactLenis root>
+    <ReactLenis root options={{ lerp: 0.1 }} className="store-layout">
       <CursorEffect />
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
       <AnnouncementBar />

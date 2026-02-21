@@ -3,17 +3,9 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ArrowRight, Search as SearchIcon } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { searchProducts, type SearchProduct } from "@/lib/search";
 import Link from "next/link";
 import Image from "next/image";
-
-type Product = {
-  id: string;
-  name: string;
-  base_price: number;
-  category: string;
-  product_images: Array<{ url: string }>;
-};
 
 interface SearchModalProps {
   open: boolean;
@@ -29,11 +21,10 @@ const TRENDING = [
 
 export function SearchModal({ open, onClose }: SearchModalProps) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Product[]>([]);
+  const [results, setResults] = useState<SearchProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const supabase = createClient();
 
   useEffect(() => {
     if (open) {
@@ -52,51 +43,23 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
-  const search = useCallback(
-    async (q: string) => {
-      if (!q.trim()) {
-        setResults([]);
-        setSearched(false);
-        return;
-      }
-      setLoading(true);
-      setSearched(true);
-
-      // Search name with ilike — most reliable across Supabase versions
-      const { data: nameMatches } = await supabase
-        .from("products")
-        .select("id, name, base_price, category, product_images(url)")
-        .ilike("name", `%${q.trim()}%`)
-        .eq("is_active", true)
-        .limit(8);
-
-      // Also search category
-      const { data: catMatches } = await supabase
-        .from("products")
-        .select("id, name, base_price, category, product_images(url)")
-        .ilike("category", `%${q.trim()}%`)
-        .eq("is_active", true)
-        .limit(8);
-
-      // Merge and deduplicate
-      const combined = [...(nameMatches ?? []), ...(catMatches ?? [])];
-      const seen = new Set<string>();
-      const unique = combined.filter((p) => {
-        if (seen.has(p.id)) return false;
-        seen.add(p.id);
-        return true;
-      });
-
-      setResults(unique as Product[]);
-      setLoading(false);
-    },
-    [supabase],
-  );
+  const runSearch = useCallback(async (q: string) => {
+    if (!q.trim()) {
+      setResults([]);
+      setSearched(false);
+      return;
+    }
+    setLoading(true);
+    setSearched(true);
+    const data = await searchProducts(q, {}, 8);
+    setResults(data);
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    const timeout = setTimeout(() => search(query), 300);
+    const timeout = setTimeout(() => runSearch(query), 300);
     return () => clearTimeout(timeout);
-  }, [query, search]);
+  }, [query, runSearch]);
 
   return (
     <AnimatePresence>
@@ -128,6 +91,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="What are you looking for?"
                 className="flex-1 bg-transparent text-foreground text-xl font-serif font-light italic outline-none placeholder:text-muted-foreground/40"
+                style={{ caretColor: "currentColor", cursor: "text" }}
               />
               {loading && (
                 <div className="w-4 h-4 border border-foreground border-t-transparent rounded-full animate-spin shrink-0" />
@@ -193,7 +157,10 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
                           {product.product_images?.[0]?.url ? (
                             <Image
                               src={product.product_images[0].url}
-                              alt={product.name}
+                              alt={
+                                product.product_images[0].alt_text ??
+                                product.name
+                              }
                               fill
                               className="object-cover"
                               sizes="56px"
@@ -210,6 +177,9 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
                           </p>
                           <p className="text-[11px] text-muted-foreground capitalize">
                             {product.category}
+                            {product.product_variants?.[0]?.material
+                              ? ` · ${product.product_variants[0].material}`
+                              : ""}
                           </p>
                         </div>
                         <div className="flex items-center gap-3">
@@ -227,7 +197,8 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
                       onClick={onClose}
                       className="text-[11px] tracking-[0.15em] uppercase text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 editorial-link"
                     >
-                      View all results <ArrowRight className="w-3 h-3" />
+                      View all results for &ldquo;{query}&rdquo;{" "}
+                      <ArrowRight className="w-3 h-3" />
                     </Link>
                   </div>
                 </div>

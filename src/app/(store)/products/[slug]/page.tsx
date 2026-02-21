@@ -28,6 +28,7 @@ type Variant = {
   price_adjustment: number;
   inventory_count: number;
   is_made_to_order: boolean;
+  show_out_of_stock_label: boolean;
 };
 
 type ProductImage = {
@@ -131,15 +132,19 @@ export default function ProductDetailPage({
   const effectivePrice =
     product.base_price + (selectedVariant?.price_adjustment ?? 0);
 
+  // isInStock governs whether "Add to Bag" is enabled
   const isInStock =
     (selectedVariant?.inventory_count ?? 0) > 0 ||
     selectedVariant?.is_made_to_order === true;
 
+  // stockLabel: only show "Out of Stock" when admin has explicitly enabled the flag
   const stockLabel = selectedVariant?.is_made_to_order
     ? "Made to Order (4–6 weeks)"
     : (selectedVariant?.inventory_count ?? 0) > 0
       ? `In Stock (${selectedVariant!.inventory_count} left)`
-      : "Out of Stock";
+      : selectedVariant?.show_out_of_stock_label
+        ? "Out of Stock"
+        : null; // null = don't show any stock badge
 
   // Group variants by material
   const materials = Array.from(

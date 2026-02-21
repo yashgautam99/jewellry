@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ProductSkeleton } from "@/components/common/Loaders";
+import { searchProducts } from "@/lib/search";
 
 type Product = {
   id: string;
@@ -70,46 +71,18 @@ export default function ProductsPage() {
     [router, searchParams],
   );
 
-  // Fetch products from Supabase based on URL params
+  // Fetch products — uses the shared search utility (same as SearchModal)
   const fetchProducts = useCallback(async () => {
     setLoading(true);
-    let q = supabase
-      .from("products")
-      .select("id, name, base_price, category, gender, product_images(url)")
-      .eq("is_active", true);
-
-    // Category filter
-    if (urlCategory) {
-      q = q.eq("category", urlCategory.toLowerCase());
-    }
-
-    // Gender filter
-    if (urlGender && urlGender !== "all") {
-      q = q.eq("gender", urlGender.toLowerCase());
-    }
-
-    // Search filter — use ilike on name, fallback to category
-    if (urlSearch.trim()) {
-      q = q.ilike("name", `%${urlSearch.trim()}%`);
-    }
-
-    // Price filter
-    if (urlMaxPrice < 200000) {
-      q = q.lte("base_price", urlMaxPrice);
-    }
-
-    // Sort
-    if (urlSort === "price_asc") q = q.order("base_price", { ascending: true });
-    else if (urlSort === "price_desc")
-      q = q.order("base_price", { ascending: false });
-    else if (urlSort === "newest")
-      q = q.order("created_at", { ascending: false });
-    else q = q.order("is_featured", { ascending: false });
-
-    const { data, error } = await q;
-    if (!error) setProducts((data as Product[]) ?? []);
+    const data = await searchProducts(urlSearch, {
+      category: urlCategory || undefined,
+      gender: urlGender && urlGender !== "all" ? urlGender : undefined,
+      priceMax: urlMaxPrice,
+      sort: urlSort,
+    });
+    setProducts(data);
     setLoading(false);
-  }, [urlCategory, urlGender, urlSearch, urlSort, urlMaxPrice, supabase]);
+  }, [urlCategory, urlGender, urlSearch, urlSort, urlMaxPrice]);
 
   useEffect(() => {
     fetchProducts();

@@ -27,11 +27,13 @@ export default function AdminLayout({
   const isLoginPage = pathname === "/admin/login";
 
   if (isLoginPage) {
-    return <div className="min-h-screen bg-background">{children}</div>;
+    return (
+      <div className="admin-layout min-h-screen bg-background">{children}</div>
+    );
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="admin-layout flex min-h-screen bg-background">
       {/* Monochrome sidebar */}
       <aside className="w-56 bg-foreground hidden lg:flex flex-col">
         {/* Logo */}

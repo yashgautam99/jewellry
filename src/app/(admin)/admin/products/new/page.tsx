@@ -1,3 +1,5 @@
+"use client";
+
 import { createProduct } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,9 +15,24 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Upload, Info } from "lucide-react";
+import { useState, useRef } from "react";
 
 export default function NewProductPage() {
+  const [preview, setPreview] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string>("");
+  const [useUrl, setUseUrl] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (ev) => setPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="max-w-3xl mx-auto pb-12">
       <Link
@@ -35,8 +52,9 @@ export default function NewProductPage() {
         </p>
       </div>
 
-      <form action={createProduct}>
+      <form action={createProduct} encType="multipart/form-data">
         <div className="grid gap-8">
+          {/* General Info */}
           <Card className="border-border bg-card shadow-sm">
             <CardHeader>
               <CardTitle className="font-serif">General Information</CardTitle>
@@ -130,7 +148,7 @@ export default function NewProductPage() {
                 />
               </div>
 
-              <div className="flex items-center justify-between p-4 border border-border rounded-xl">
+              <div className="flex items-center justify-between p-4 border border-border">
                 <div className="space-y-0.5">
                   <Label className="text-sm font-medium">Active Status</Label>
                   <p className="text-xs text-muted-foreground">
@@ -142,6 +160,7 @@ export default function NewProductPage() {
             </CardContent>
           </Card>
 
+          {/* Initial Variant */}
           <Card className="border-border bg-card shadow-sm">
             <CardHeader>
               <CardTitle className="font-serif">
@@ -184,6 +203,21 @@ export default function NewProductPage() {
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label
+                    htmlFor="price_adjustment"
+                    className="text-xs uppercase tracking-widest text-muted-foreground"
+                  >
+                    Price Adjustment (₹)
+                  </Label>
+                  <Input
+                    id="price_adjustment"
+                    name="price_adjustment"
+                    type="number"
+                    defaultValue="0"
+                    className="h-12"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label
                     htmlFor="inventory_count"
                     className="text-xs uppercase tracking-widest text-muted-foreground"
                   >
@@ -197,23 +231,134 @@ export default function NewProductPage() {
                     className="h-12"
                   />
                 </div>
-                <div className="space-y-2 flex flex-col justify-end pb-3">
-                  <div className="flex items-center gap-3">
-                    <Switch
-                      id="is_made_to_order"
-                      name="is_made_to_order"
-                      value="true"
-                      defaultChecked
-                    />
+              </div>
+
+              <div className="space-y-3 p-4 border border-border bg-secondary/20">
+                <div className="flex items-center gap-3">
+                  <Switch
+                    id="is_made_to_order"
+                    name="is_made_to_order"
+                    value="true"
+                    defaultChecked
+                  />
+                  <div>
                     <Label
                       htmlFor="is_made_to_order"
                       className="text-sm cursor-pointer"
                     >
-                      Made to order (ignores inventory)
+                      Made to Order
                     </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Ships in 4–6 weeks, ignores inventory count
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 pt-1 border-t border-border">
+                  <Switch
+                    id="show_out_of_stock_label"
+                    name="show_out_of_stock_label"
+                    value="true"
+                  />
+                  <div>
+                    <Label
+                      htmlFor="show_out_of_stock_label"
+                      className="text-sm cursor-pointer flex items-center gap-1.5"
+                    >
+                      Show &ldquo;Out of Stock&rdquo; label
+                      <Info className="w-3 h-3 text-muted-foreground" />
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Only shown to customers when inventory = 0 and not
+                      made-to-order
+                    </p>
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Product Image */}
+          <Card className="border-border bg-card shadow-sm">
+            <CardHeader>
+              <CardTitle className="font-serif">Product Image</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-4 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setUseUrl(false)}
+                  className={`text-xs uppercase tracking-widest pb-1 border-b-2 transition-colors ${
+                    !useUrl
+                      ? "border-foreground text-foreground"
+                      : "border-transparent text-muted-foreground"
+                  }`}
+                >
+                  Upload File
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUseUrl(true)}
+                  className={`text-xs uppercase tracking-widest pb-1 border-b-2 transition-colors ${
+                    useUrl
+                      ? "border-foreground text-foreground"
+                      : "border-transparent text-muted-foreground"
+                  }`}
+                >
+                  Paste URL
+                </button>
+              </div>
+
+              {!useUrl ? (
+                <>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    name="image_file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="w-full border-2 border-dashed border-border hover:border-foreground transition-colors p-8 flex flex-col items-center gap-3 text-muted-foreground hover:text-foreground"
+                  >
+                    <Upload className="w-6 h-6" />
+                    <span className="text-sm">
+                      {fileName ? fileName : "Click to upload or drag & drop"}
+                    </span>
+                    <span className="text-xs">PNG, JPG, WEBP up to 10MB</span>
+                  </button>
+                  {preview && (
+                    <div className="relative w-32 h-32 overflow-hidden border border-border">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={preview}
+                        alt="Preview"
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="image_url"
+                    className="text-xs uppercase tracking-widest text-muted-foreground"
+                  >
+                    Image URL
+                  </Label>
+                  <Input
+                    id="image_url"
+                    name="image_url"
+                    placeholder="https://..."
+                    className="h-12"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Paste any publicly accessible image URL
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

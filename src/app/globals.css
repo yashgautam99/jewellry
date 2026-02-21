@@ -7,11 +7,42 @@
 /* ===== SMOOTH SCROLL ===== */
 /* Handled by Lenis now */
 
-/* ===== HIDE DEFAULT CURSOR (custom cursor replaces it) ===== */
+/* ===== HIDE DEFAULT CURSOR (custom cursor replaces it — STORE ONLY) ===== */
 @media (pointer: fine) {
-  * {
+  .store-layout,
+  .store-layout * {
     cursor: none !important;
   }
+}
+
+/* ===== ALWAYS RESTORE CURSOR IN INPUTS (even inside store) ===== */
+input,
+textarea,
+select,
+[contenteditable],
+[role="combobox"],
+[role="textbox"] {
+  cursor: text !important;
+  caret-color: currentColor !important;
+}
+
+/* ===== ADMIN: ALWAYS SHOW NORMAL CURSOR ===== */
+.admin-layout,
+.admin-layout * {
+  cursor: auto !important;
+}
+.admin-layout button,
+.admin-layout a,
+.admin-layout [role="button"],
+.admin-layout label,
+.admin-layout select {
+  cursor: pointer !important;
+}
+.admin-layout input,
+.admin-layout textarea,
+.admin-layout [contenteditable] {
+  cursor: text !important;
+  caret-color: currentColor !important;
 }
 
 /* ===== SKELETON SHIMMER ===== */
